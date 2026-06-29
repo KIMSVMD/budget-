@@ -7,7 +7,7 @@
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
 
 <!-- ★ 여기에 본인 클라이언트 ID 입력 ★ -->
-<meta name="google-signin-client_id" content=132149880423-nmn6p3uaumj9srv6nkjrhnp793gkv43n.apps.googleusercontent.com">
+<meta name="google-signin-client_id" content="132149880423-nmn6p3uaumj9srv6nkjrhnp793gkv43n.apps.googleusercontent.com">
 
 <style>
 :root{
@@ -161,15 +161,7 @@ select:focus,input:focus{outline:none;border-color:var(--blue);background:var(--
 .divider{height:8px;background:var(--gray-1);margin:0}
 
 /* ── GOOGLE 로그인 배너 ── */
-.gauth-banner{background:var(--white);border-bottom:1px solid var(--gray-1);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px}
-.gauth-info{font-size:13px;color:var(--gray-6);font-weight:500}
-.gauth-info strong{color:var(--gray-9);font-weight:700;display:block;font-size:14px;margin-bottom:2px}
-.gauth-btn{padding:9px 16px;background:var(--blue);color:#fff;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);white-space:nowrap;flex-shrink:0}
-.gauth-btn.out{background:var(--gray-1);color:var(--gray-7)}
-.sync-row{display:flex;align-items:center;gap:8px;padding:10px 20px;background:var(--green-light);border-bottom:1px solid var(--gray-1)}
-.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0}
-.sync-txt{font-size:12px;font-weight:600;color:#0d9e62}
-.sync-btn{margin-left:auto;border:none;background:none;font-size:12px;font-weight:700;color:var(--blue);cursor:pointer;font-family:var(--font)}
+
 
 /* 로딩 스피너 */
 .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:6px}
@@ -178,19 +170,7 @@ select:focus,input:focus{outline:none;border-color:var(--blue);background:var(--
 </head>
 <body>
 
-<!-- ── GOOGLE 인증 배너 (항상 상단 고정) ── -->
-<div id="gauth-banner" class="gauth-banner" style="display:none">
-  <div class="gauth-info">
-    <strong id="gauth-name">로그인 필요</strong>
-    <span id="gauth-status">구글 계정으로 로그인하면 시트에 자동 저장돼요</span>
-  </div>
-  <button class="gauth-btn" id="gauth-btn" onclick="handleAuthBtn()">로그인</button>
-</div>
-<div id="sync-row" class="sync-row" style="display:none">
-  <div class="sync-dot"></div>
-  <span class="sync-txt" id="sync-txt">Google Sheets 연동됨</span>
-  <button class="sync-btn" onclick="syncNow()">지금 동기화</button>
-</div>
+
 
 <!-- ── DAY VIEW ── -->
 <div class="view active" id="view-day">
@@ -268,7 +248,13 @@ select:focus,input:focus{outline:none;border-color:var(--blue);background:var(--
   <div class="scroll-x" style="margin-top:16px;padding-bottom:6px" id="month-stats-row"></div>
   <div class="divider" style="margin-top:10px"></div>
   <div class="section" style="margin-top:16px">
-    <div class="section-head"><div class="section-title">지출 항목별</div></div>
+    <div class="section-head">
+      <div class="section-title">지출 항목별</div>
+      <div style="display:flex;background:var(--gray-1);border-radius:20px;padding:2px;gap:2px">
+        <button id="month-cat-tab-main" onclick="setCatTab('month','main')" style="padding:4px 12px;border-radius:18px;border:none;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font);background:var(--white);color:var(--blue)">대항목</button>
+        <button id="month-cat-tab-sub" onclick="setCatTab('month','sub')" style="padding:4px 12px;border-radius:18px;border:none;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font);background:transparent;color:var(--gray-5)">소항목</button>
+      </div>
+    </div>
     <div class="card" id="month-cat-list"></div>
   </div>
   <div class="section">
@@ -311,7 +297,13 @@ select:focus,input:focus{outline:none;border-color:var(--blue);background:var(--
     <div class="card"><table class="y-table"><thead><tr><th>월</th><th>수입</th><th>지출</th><th>잔액</th></tr></thead><tbody id="year-table"></tbody></table></div>
   </div>
   <div class="section">
-    <div class="section-head"><div class="section-title">연간 지출 항목별</div></div>
+    <div class="section-head">
+      <div class="section-title">연간 지출 항목별</div>
+      <div style="display:flex;background:var(--gray-1);border-radius:20px;padding:2px;gap:2px">
+        <button id="year-cat-tab-main" onclick="setCatTab('year','main')" style="padding:4px 12px;border-radius:18px;border:none;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font);background:var(--white);color:var(--blue)">대항목</button>
+        <button id="year-cat-tab-sub" onclick="setCatTab('year','sub')" style="padding:4px 12px;border-radius:18px;border:none;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font);background:transparent;color:var(--gray-5)">소항목</button>
+      </div>
+    </div>
     <div class="card" id="year-cat-list"></div>
   </div>
 </div>
@@ -374,19 +366,31 @@ select:focus,input:focus{outline:none;border-color:var(--blue);background:var(--
 
   <!-- Google Sheets 연동 섹션 -->
   <div class="section" style="margin-top:16px">
-    <div class="section-head"><div class="section-title">Google Sheets 연동</div></div>
-    <div class="card card-pad">
-      <div class="form-stack">
-        <div id="gs-status-card" style="padding:14px;background:var(--gray-0);border-radius:var(--radius-sm);font-size:13px;color:var(--gray-6);font-weight:500;text-align:center">
-          로그인 후 연동 가능합니다
+    <div class="section-head"><div class="section-title">Google 계정</div></div>
+    <div class="card">
+      <!-- 로그아웃 상태 -->
+      <div id="gs-login-row" style="padding:16px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--gray-9);margin-bottom:3px">로그인 필요</div>
+          <div style="font-size:12px;color:var(--gray-5)">로그인하면 Google Sheets에 자동 저장돼요</div>
         </div>
-        <div class="field">
+        <button class="cat-add-btn" id="gs-login-btn" onclick="handleAuthBtn()">로그인</button>
+      </div>
+      <!-- 로그인 상태 -->
+      <div id="gs-loggedin-row" style="display:none;padding:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div>
+            <div style="font-size:14px;font-weight:700;color:var(--green);margin-bottom:3px">연동됨</div>
+            <div id="gs-user-email" style="font-size:12px;color:var(--gray-5)">Google Sheets에 자동 저장 중</div>
+          </div>
+          <button class="cat-add-btn" onclick="signOut()" style="background:var(--gray-2);color:var(--gray-7)">로그아웃</button>
+        </div>
+        <div class="field" style="margin-bottom:10px">
           <label class="field-label">스프레드시트 ID</label>
-          <input type="text" id="sheet-id-input" placeholder="여기에_스프레드시트_ID_입력" style="font-size:12px">
+          <input type="text" id="sheet-id-input" placeholder="스프레드시트 ID 입력" style="font-size:12px">
         </div>
-        <button class="btn-primary" onclick="saveSheetId()" style="background:var(--gray-7)">시트 ID 저장</button>
-        <button class="btn-primary" onclick="syncNow()">지금 동기화 (업로드)</button>
-        <button class="btn-primary" onclick="loadFromSheets()">시트에서 불러오기</button>
+        <button class="btn-primary" onclick="saveSheetId()" style="background:var(--gray-7);margin-bottom:8px">시트 ID 저장</button>
+        <button class="btn-primary" onclick="loadFromSheets()">다른 기기에서 불러오기</button>
       </div>
     </div>
   </div>
@@ -426,10 +430,7 @@ select:focus,input:focus{outline:none;border-color:var(--blue);background:var(--
   <div class="section">
     <div class="section-head"><div class="section-title">데이터</div></div>
     <div class="card">
-      <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
-        <button class="btn-primary" onclick="exportData()" style="background:var(--gray-7)">JSON 내보내기</button>
-        <button class="btn-primary" onclick="document.getElementById('import-file').click()" style="background:var(--gray-7)">JSON 불러오기</button>
-        <input id="import-file" type="file" accept=".json" style="display:none" onchange="importData(event)">
+      <div style="padding:16px">
         <button class="btn-primary" onclick="resetData()" style="background:var(--red)">전체 데이터 초기화</button>
       </div>
     </div>
@@ -592,48 +593,49 @@ function initGoogleAuth(){
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID,
     scope: SCOPES,
+    prompt: '',
     callback: (resp) => {
       if(resp.error){ toast('로그인 실패: '+resp.error); return; }
       accessToken = resp.access_token;
+      // 자동 로그인을 위해 hint 저장
+      localStorage.setItem('kb_autologin', '1');
       updateAuthUI(true);
       toast('로그인됐어요!');
     }
   });
-  document.getElementById('gauth-banner').style.display='flex';
   // 시트 ID 복원
-  if(sheetId) document.getElementById('sheet-id-input').value = sheetId;
+  if(sheetId && document.getElementById('sheet-id-input'))
+    document.getElementById('sheet-id-input').value = sheetId;
+  // 자동 로그인 시도
+  if(localStorage.getItem('kb_autologin')==='1'){
+    setTimeout(()=>{ tokenClient.requestAccessToken({prompt:''}); }, 500);
+  }
 }
 
 function handleAuthBtn(){
-  if(accessToken){ signOut(); }
-  else { tokenClient.requestAccessToken(); }
+  tokenClient.requestAccessToken({prompt:'select_account'});
 }
 
 function signOut(){
   if(accessToken) google.accounts.oauth2.revoke(accessToken);
   accessToken = null;
+  localStorage.removeItem('kb_autologin');
   updateAuthUI(false);
   toast('로그아웃됐어요.');
 }
 
 function updateAuthUI(loggedIn){
-  const btn  = document.getElementById('gauth-btn');
-  const name = document.getElementById('gauth-name');
-  const status = document.getElementById('gauth-status');
-  const syncRow = document.getElementById('sync-row');
-  const gsCard  = document.getElementById('gs-status-card');
+  const loginRow    = document.getElementById('gs-login-row');
+  const loggedinRow = document.getElementById('gs-loggedin-row');
+  if(!loginRow) return;
   if(loggedIn){
-    btn.textContent='로그아웃';btn.className='gauth-btn out';
-    name.textContent='연동됨';
-    status.textContent='Google Sheets에 자동 저장 중';
-    syncRow.style.display='flex';
-    gsCard.innerHTML='<span style="color:var(--green);font-weight:700">연동 완료</span> — 내역을 추가하면 시트에 자동 저장돼요';
+    loginRow.style.display='none';
+    loggedinRow.style.display='block';
+    if(sheetId && document.getElementById('sheet-id-input'))
+      document.getElementById('sheet-id-input').value = sheetId;
   } else {
-    btn.textContent='로그인';btn.className='gauth-btn';
-    name.textContent='로그인 필요';
-    status.textContent='구글 계정으로 로그인하면 시트에 자동 저장돼요';
-    syncRow.style.display='none';
-    gsCard.textContent='로그인 후 연동 가능합니다';
+    loginRow.style.display='flex';
+    loggedinRow.style.display='none';
   }
 }
 
@@ -655,7 +657,7 @@ async function sheetsRequest(method, url, body){
   });
   if(!resp.ok){
     const err = await resp.json().catch(()=>({}));
-    if(err.error?.status==='UNAUTHENTICATED'){ accessToken=null; updateAuthUI(false); toast('세션이 만료됐어요. 다시 로그인해주세요.'); }
+    if(err.error?.status==='UNAUTHENTICATED'){ accessToken=null; localStorage.removeItem('kb_autologin'); updateAuthUI(false); toast('세션이 만료됐어요. 설정에서 다시 로그인해주세요.'); }
     return null;
   }
   return resp.json();
@@ -666,8 +668,7 @@ async function syncNow(){
   if(!accessToken){toast('먼저 로그인해주세요.');return;}
   if(!sheetId){toast('설정 탭에서 스프레드시트 ID를 입력해주세요.');return;}
 
-  const syncTxt = document.getElementById('sync-txt');
-  syncTxt.innerHTML='<span class="spinner"></span>동기화 중...';
+  toast('동기화 중...', 5000);
 
   // 시트가 있는지 확인 후 없으면 생성
   await ensureSheet();
@@ -698,10 +699,8 @@ async function syncNow(){
   );
 
   if(res){
-    syncTxt.textContent=`Google Sheets 연동됨 — 방금 동기화`;
     toast(`${rows.length}건 저장됐어요!`);
   } else {
-    syncTxt.textContent='동기화 실패 — 재시도 필요';
     toast('동기화에 실패했어요. 시트 ID를 확인해주세요.');
   }
 }
@@ -855,12 +854,55 @@ function statCardsHTML(txs){
 }
 
 // ── CAT BREAKDOWN ──
-function catBreakdownHTML(txs){
-  const catMap={};txs.filter(t=>t.type==='expense').forEach(t=>catMap[t.catMain]=(catMap[t.catMain]||0)+t.amount);
-  const sorted=Object.entries(catMap).sort((a,b)=>b[1]-a[1]);
-  const total=sorted.reduce((s,[,v])=>s+v,0)||1;
-  if(!sorted.length)return '<div class="empty-msg">지출 내역이 없어요.</div>';
-  return sorted.map(([cat,amt])=>`<div class="cat-item">${catBadge(cat,36)}<div class="cat-body"><div class="cat-name">${cat}</div><div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${(amt/total*100).toFixed(1)}%"></div></div><div class="cat-pct">${(amt/total*100).toFixed(1)}%</div></div><div class="cat-amt">${fmtN(amt)}</div></div>`).join('');
+let catTabState = {month:'main', year:'main'};
+
+function setCatTab(view, tab){
+  catTabState[view] = tab;
+  const mainBtn = document.getElementById(`${view}-cat-tab-main`);
+  const subBtn  = document.getElementById(`${view}-cat-tab-sub`);
+  mainBtn.style.background = tab==='main' ? 'var(--white)' : 'transparent';
+  mainBtn.style.color      = tab==='main' ? 'var(--blue)'  : 'var(--gray-5)';
+  subBtn.style.background  = tab==='sub'  ? 'var(--white)' : 'transparent';
+  subBtn.style.color       = tab==='sub'  ? 'var(--blue)'  : 'var(--gray-5)';
+  if(view==='month') renderMonthCat();
+  else renderYearCat();
+}
+
+function catBreakdownHTML(txs, mode='main'){
+  const expTxs = txs.filter(t=>t.type==='expense');
+  let entries;
+  if(mode==='main'){
+    const map={};
+    expTxs.forEach(t=>map[t.catMain]=(map[t.catMain]||0)+t.amount);
+    entries = Object.entries(map).map(([k,v])=>({name:k, sub:null, amt:v}));
+  } else {
+    const map={};
+    expTxs.forEach(t=>{
+      const key = `${t.catMain} › ${t.catSub||'기타'}`;
+      if(!map[key]) map[key]={name:t.catSub||'기타', parent:t.catMain, amt:0};
+      map[key].amt += t.amount;
+    });
+    entries = Object.values(map);
+  }
+  entries.sort((a,b)=>b.amt-a.amt);
+  const total = entries.reduce((s,e)=>s+e.amt,0)||1;
+  if(!entries.length) return '<div class="empty-msg">지출 내역이 없어요.</div>';
+  return entries.map(e=>{
+    const badge = mode==='main'
+      ? catBadge(e.name, 36)
+      : `<div style="width:36px;height:36px;border-radius:10px;background:${catColor(e.parent)}1a;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:${catColor(e.parent)};flex-shrink:0;text-align:center;line-height:1.2">${e.parent.slice(0,2)}</div>`;
+    const label = mode==='main' ? e.name : `<span style="font-size:11px;color:var(--gray-5);font-weight:500">${e.parent}</span><br>${e.name}`;
+    return `<div class="cat-item">${badge}<div class="cat-body"><div class="cat-name" style="line-height:1.4">${label}</div><div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${(e.amt/total*100).toFixed(1)}%"></div></div><div class="cat-pct">${(e.amt/total*100).toFixed(1)}%</div></div><div class="cat-amt">${fmtN(e.amt)}</div></div>`;
+  }).join('');
+}
+
+function renderMonthCat(){
+  const txs = getMonthTxs(cMonth.y, cMonth.m);
+  document.getElementById('month-cat-list').innerHTML = catBreakdownHTML(txs, catTabState.month);
+}
+function renderYearCat(){
+  const txs = getYearTxs(cYear);
+  document.getElementById('year-cat-list').innerHTML = catBreakdownHTML(txs, catTabState.year);
 }
 
 // ── DAY ──
@@ -886,7 +928,7 @@ function renderMonth(){
   const txs=getMonthTxs(y,m);const inc=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);const exp=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
   document.getElementById('month-bal').textContent=fmt(inc-exp);document.getElementById('month-inc').textContent=fmt(inc);document.getElementById('month-exp').textContent=fmt(exp);
   document.getElementById('month-stats-row').innerHTML=statCardsHTML(txs);
-  document.getElementById('month-cat-list').innerHTML=catBreakdownHTML(txs);
+  renderMonthCat();
   const byDate={};txs.forEach(t=>{if(!byDate[t._key])byDate[t._key]=[];byDate[t._key].push(t);});
   const dks=Object.keys(byDate).sort((a,b)=>b.localeCompare(a));
   const listEl=document.getElementById('month-tx-list');
@@ -906,9 +948,7 @@ function renderYear(){
   const allTxs=getYearTxs(cYear);
   document.getElementById('year-stats-row').innerHTML=statCardsHTML(allTxs);
   document.getElementById('year-table').innerHTML=mData.map((d,i)=>`<tr><td>${i+1}월</td><td class="i">${d.inc?fmtN(d.inc):'-'}</td><td class="e">${d.exp?fmtN(d.exp):'-'}</td><td class="b" style="color:${d.bal>=0?'var(--blue)':'var(--red)'}">${fmtN(d.bal)}</td></tr>`).join('');
-  const catMap={};allTxs.filter(t=>t.type==='expense').forEach(t=>catMap[t.catMain]=(catMap[t.catMain]||0)+t.amount);
-  const sorted=Object.entries(catMap).sort((a,b)=>b[1]-a[1]);const total=sorted.reduce((s,[,v])=>s+v,0)||1;
-  document.getElementById('year-cat-list').innerHTML=sorted.length?sorted.map(([cat,amt])=>`<div class="cat-item">${catBadge(cat,36)}<div class="cat-body"><div class="cat-name">${cat}</div><div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${(amt/total*100).toFixed(1)}%"></div></div><div class="cat-pct">${(amt/total*100).toFixed(1)}%</div></div><div class="cat-amt">${fmtN(amt)}</div></div>`).join(''):'<div class="empty-msg">지출 내역이 없어요.</div>';
+  renderYearCat();
 }
 
 // ── GOAL ──
@@ -940,6 +980,7 @@ function changeGoalMonth(d){cMonth.m+=d;if(cMonth.m>11){cMonth.m=0;cMonth.y++;}i
 
 // ── SETTINGS ──
 function renderSettings(){
+  if(sheetId && document.getElementById('sheet-id-input')) document.getElementById('sheet-id-input').value=sheetId;
   renderPaymentList();renderMainCatMgr();renderSubCatParent();renderSubCatMgr();
   if(sheetId) document.getElementById('sheet-id-input').value=sheetId;
 }
