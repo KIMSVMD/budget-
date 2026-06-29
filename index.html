@@ -665,91 +665,120 @@ async function sheetsRequest(method, url, body){
   return resp.json();
 }
 
-// 모든 내역을 시트에 업로드 (덮어쓰기)
+const GOAL_SHEET = '가계부목표';
+const SETTINGS_SHEET = '가계부설정';
+
+// 모든 내역 + 목표 + 설정을 시트에 업로드
 async function syncNow(){
   if(!accessToken){toast('먼저 로그인해주세요.');return;}
   if(!sheetId){toast('설정 탭에서 스프레드시트 ID를 입력해주세요.');return;}
-
   toast('동기화 중...', 5000);
 
-  // 시트가 있는지 확인 후 없으면 생성
-  await ensureSheet();
+  // 시트 존재 확인 (한 번에)
+  const meta=await sheetsRequest('GET',`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?fields=sheets.properties.title`);
+  if(!meta){toast('시트 접근 실패. ID를 확인해주세요.');return;}
+  const existing=meta.sheets?.map(s=>s.properties.title)||[];
+  const toAdd=[SHEET_NAME,GOAL_SHEET,SETTINGS_SHEET].filter(n=>!existing.includes(n));
+  if(toAdd.length){
+    await sheetsRequest('POST',`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}:batchUpdate`,
+      {requests:toAdd.map(title=>({addSheet:{properties:{title}}}))});
+  }
 
-  // 전체 내역 rows 생성
+  // ── 내역 시트 ──
   const header=[['날짜','유형','대항목','소항목','메모','금액','결제수단','ID']];
   const rows=[];
   Object.entries(data).forEach(([dk,txs])=>{
-    txs.forEach(t=>{
-      rows.push([dk, t.type==='income'?'수입':'지출', t.catMain, t.catSub||'', t.memo||'', t.amount, t.method||'', t.id]);
-    });
+    txs.forEach(t=>rows.push([dk,t.type==='income'?'수입':'지출',t.catMain,t.catSub||'',t.memo||'',t.amount,t.method||'',t.id]));
   });
   rows.sort((a,b)=>a[0].localeCompare(b[0]));
-
   const allRows=[...header,...rows];
-  const range=`${SHEET_NAME}!A1:H${allRows.length}`;
+  await sheetsRequest('POST',`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(SHEET_NAME)}:clear`,{});
+  await sheetsRequest('PUT',`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(SHEET_NAME+'!A1:H'+allRows.length)}?valueInputOption=RAW`,{majorDimension:'ROWS',values:allRows});
 
-  // 기존 내용 클리어
-  await sheetsRequest('POST',
-    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(SHEET_NAME)}:clear`,
-    {}
-  );
+  // ── 목표 시트 ──
+  const gHeader=[['기간키','항목','목표금액']];
+  const gRows=[];
+  Object.entries(goals).forEach(([gk,gc])=>Object.entries(gc).forEach(([cat,amt])=>gRows.push([gk,cat,amt])));
+  const allGRows=[...gHeader,...gRows];
+  await sheetsRequest('POST',`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(GOAL_SHEET)}:clear`,{});
+  await sheetsRequest('PUT',`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(GOAL_SHEET+'!A1:C'+allGRows.length)}?valueInputOption=RAW`,{majorDimension:'ROWS',values:allGRows});
 
-  // 새 데이터 쓰기
-  const res = await sheetsRequest('PUT',
-    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}?valueInputOption=RAW`,
-    {range, majorDimension:'ROWS', values:allRows}
-  );
+  // ── 설정 시트 (카테고리 + 결제수단) ──
+  // 결제수단: type=payment
+  // 카테고리: type=cat_income 또는 cat_expense, key=대항목, value=소항목들(콤마구분)
+  const sRows=[['타입','키','값']];
+  payments.forEach(p=>sRows.push(['payment',p,'']));
+  ['income','expense'].forEach(tp=>{
+    Object.entries(cats[tp]||{}).forEach(([main,subs])=>{
+      sRows.push([`cat_${tp}`, main, subs.join(',')]);
+    });
+  });
+  await sheetsRequest('POST',`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(SETTINGS_SHEET)}:clear`,{});
+  const res=await sheetsRequest('PUT',`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(SETTINGS_SHEET+'!A1:C'+sRows.length)}?valueInputOption=RAW`,{majorDimension:'ROWS',values:sRows});
 
-  if(res){
-    toast(`${rows.length}건 저장됐어요!`);
-  } else {
-    toast('동기화에 실패했어요. 시트 ID를 확인해주세요.');
-  }
+  if(res){ toast(`동기화 완료! 내역 ${rows.length}건`); }
+  else { toast('동기화에 실패했어요.'); }
 }
 
-// 시트에서 불러오기
+// 시트에서 불러오기 (내역 + 목표 + 설정)
 async function loadFromSheets(){
   if(!accessToken){toast('먼저 로그인해주세요.');return;}
   if(!sheetId){toast('설정 탭에서 스프레드시트 ID를 입력해주세요.');return;}
   if(!confirm('시트의 데이터를 불러오면 현재 데이터를 덮어씁니다. 계속할까요?'))return;
 
-  const res = await sheetsRequest('GET',
-    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(SHEET_NAME)}`
-  );
-  if(!res||!res.values||res.values.length<2){toast('시트에 데이터가 없어요.');return;}
-
+  // ── 내역 불러오기 ──
+  const res=await sheetsRequest('GET',`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(SHEET_NAME)}`);
+  if(!res||!res.values||res.values.length<2){toast('시트에 내역 데이터가 없어요.');return;}
   const newData={};
   res.values.slice(1).forEach(row=>{
     const [dk,typeStr,catMain,catSub,memo,amountStr,method,idStr]=row;
-    if(!dk||!amountStr) return;
-    if(!newData[dk]) newData[dk]=[];
-    newData[dk].push({
-      id: parseInt(idStr)||Date.now(),
-      type: typeStr==='수입'?'income':'expense',
-      catMain, catSub, memo,
-      amount: parseFloat(amountStr)||0,
-      method
-    });
+    if(!dk||!amountStr)return;
+    if(!newData[dk])newData[dk]=[];
+    newData[dk].push({id:parseInt(idStr)||Date.now(),type:typeStr==='수입'?'income':'expense',catMain,catSub,memo,amount:parseFloat(amountStr)||0,method});
   });
-  data=newData; save();
-  renderDay();renderMonth();renderYear();
-  toast('시트에서 불러왔어요!');
+  data=newData;
+
+  // ── 목표 불러오기 ──
+  const gRes=await sheetsRequest('GET',`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(GOAL_SHEET)}`);
+  if(gRes&&gRes.values&&gRes.values.length>1){
+    const newGoals={};
+    gRes.values.slice(1).forEach(row=>{
+      const [gk,cat,amtStr]=row;if(!gk||!cat)return;
+      if(!newGoals[gk])newGoals[gk]={};
+      newGoals[gk][cat]=parseFloat(amtStr)||0;
+    });
+    goals=newGoals;
+  }
+
+  // ── 설정 불러오기 (카테고리 + 결제수단) ──
+  const sRes=await sheetsRequest('GET',`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(SETTINGS_SHEET)}`);
+  if(sRes&&sRes.values&&sRes.values.length>1){
+    const newPayments=[];
+    const newCats={income:{},expense:{}};
+    sRes.values.slice(1).forEach(row=>{
+      const [type,key,val]=row;
+      if(type==='payment'&&key) newPayments.push(key);
+      else if(type==='cat_income'&&key) newCats.income[key]=val?val.split(',').filter(Boolean):[];
+      else if(type==='cat_expense'&&key) newCats.expense[key]=val?val.split(',').filter(Boolean):[];
+    });
+    if(newPayments.length) payments=newPayments;
+    if(Object.keys(newCats.income).length||Object.keys(newCats.expense).length) cats=newCats;
+  }
+
+  save();
+  // UI 전체 갱신
+  populateAllPayments();
+  populateCats(document.getElementById('cat-main'),document.getElementById('cat-sub'),cType);
+  populateGoalCats();
+  renderDay();renderMonth();renderYear();renderGoal();renderSettings();
+  toast('모두 불러왔어요! 내역·목표·카테고리·결제수단 동기화 완료');
 }
 
-// 시트 존재 확인 후 없으면 생성
-async function ensureSheet(){
-  const meta = await sheetsRequest('GET',
-    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?fields=sheets.properties.title`
-  );
-  if(!meta) return;
-  const exists = meta.sheets?.some(s=>s.properties.title===SHEET_NAME);
-  if(!exists){
-    await sheetsRequest('POST',
-      `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}:batchUpdate`,
-      {requests:[{addSheet:{properties:{title:SHEET_NAME}}}]}
-    );
-  }
-}
+// 목표 시트 존재 확인 (syncNow 내부로 통합됨, 호환성 유지용)
+async function ensureGoalSheet(){}
+
+// 시트 존재 확인 후 없으면 생성 (호환성 유지용)
+async function ensureSheet(){}
 
 // 내역 추가 시 시트에도 자동 append
 async function appendToSheet(tx, dk){
@@ -767,8 +796,8 @@ async function appendToSheet(tx, dk){
 function populatePayments(selEl){selEl.innerHTML='';payments.forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;selEl.appendChild(o);});}
 function renderPaymentList(){document.getElementById('payment-list').innerHTML=payments.map((p,i)=>`<div class="cat-mgr-item">${p}${payments.length>1?`<button class="cat-mgr-del" onclick="delPayment(${i})">×</button>`:''}</div>`).join('');}
 function openPaymentMgr(){document.getElementById('payment-modal').classList.add('open');}
-function addPayment(){const v=document.getElementById('new-payment').value.trim();if(!v)return;if(payments.includes(v)){toast('이미 있어요.');return;}payments.push(v);save();renderPaymentList();populateAllPayments();document.getElementById('new-payment').value='';closeModal('payment-modal');toast('추가됐어요.');}
-function delPayment(i){if(!confirm(`"${payments[i]}" 삭제할까요?`))return;payments.splice(i,1);save();renderPaymentList();populateAllPayments();}
+function addPayment(){const v=document.getElementById('new-payment').value.trim();if(!v)return;if(payments.includes(v)){toast('이미 있어요.');return;}payments.push(v);save();renderPaymentList();populateAllPayments();document.getElementById('new-payment').value='';closeModal('payment-modal');toast('추가됐어요.');if(accessToken&&sheetId)syncNow();}
+function delPayment(i){if(!confirm(`"${payments[i]}" 삭제할까요?`))return;payments.splice(i,1);save();renderPaymentList();populateAllPayments();if(accessToken&&sheetId)syncNow();}
 function populateAllPayments(){['tx-method','e-method'].forEach(id=>{const el=document.getElementById(id);if(el)populatePayments(el);});}
 
 // ── CATEGORIES ──
@@ -783,12 +812,12 @@ function updateEditSubCat(){updateSub(document.getElementById('e-cat-main'),docu
 // ── CAT MANAGER ──
 function setCatMgrType(t){catMgrType=t;document.getElementById('cat-mgr-tt-i').classList.toggle('active',t==='income');document.getElementById('cat-mgr-tt-e').classList.toggle('active',t==='expense');renderMainCatMgr();renderSubCatParent();renderSubCatMgr();}
 function renderMainCatMgr(){const c=getCats(catMgrType);const keys=Object.keys(c);document.getElementById('cat-mgr-main-list').innerHTML=keys.length?keys.map(k=>`<div class="cat-mgr-item">${k}<button class="cat-mgr-del" onclick="delMainCat('${k}')">×</button></div>`).join(''):'<div class="empty-msg">항목이 없어요.</div>';}
-function addMainCat(){const v=document.getElementById('new-main-cat').value.trim();if(!v)return;if(cats[catMgrType][v]){toast('이미 있어요.');return;}cats[catMgrType][v]=[];save();renderMainCatMgr();renderSubCatParent();populateCats(document.getElementById('cat-main'),document.getElementById('cat-sub'),cType);document.getElementById('new-main-cat').value='';toast('추가됐어요.');}
-function delMainCat(k){if(!confirm(`"${k}" 삭제할까요?`))return;delete cats[catMgrType][k];save();renderMainCatMgr();renderSubCatParent();renderSubCatMgr();populateCats(document.getElementById('cat-main'),document.getElementById('cat-sub'),cType);}
+function addMainCat(){const v=document.getElementById('new-main-cat').value.trim();if(!v)return;if(cats[catMgrType][v]){toast('이미 있어요.');return;}cats[catMgrType][v]=[];save();renderMainCatMgr();renderSubCatParent();populateCats(document.getElementById('cat-main'),document.getElementById('cat-sub'),cType);document.getElementById('new-main-cat').value='';toast('추가됐어요.');if(accessToken&&sheetId)syncNow();}
+function delMainCat(k){if(!confirm(`"${k}" 삭제할까요?`))return;delete cats[catMgrType][k];save();renderMainCatMgr();renderSubCatParent();renderSubCatMgr();populateCats(document.getElementById('cat-main'),document.getElementById('cat-sub'),cType);if(accessToken&&sheetId)syncNow();}
 function renderSubCatParent(){const el=document.getElementById('sub-cat-parent');el.innerHTML='';Object.keys(getCats(catMgrType)).forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=k;el.appendChild(o);});}
 function renderSubCatMgr(){const p=document.getElementById('sub-cat-parent').value;const subs=(getCats(catMgrType)[p])||[];document.getElementById('cat-mgr-sub-list').innerHTML=subs.length?subs.map((s,i)=>`<div class="cat-mgr-item">${s}<button class="cat-mgr-del" onclick="delSubCat('${p}',${i})">×</button></div>`).join(''):'<div class="empty-msg">소항목이 없어요.</div>';}
-function addSubCat(){const p=document.getElementById('sub-cat-parent').value;const v=document.getElementById('new-sub-cat').value.trim();if(!v||!p)return;if(!cats[catMgrType][p])cats[catMgrType][p]=[];if(cats[catMgrType][p].includes(v)){toast('이미 있어요.');return;}cats[catMgrType][p].push(v);save();renderSubCatMgr();document.getElementById('new-sub-cat').value='';toast('추가됐어요.');}
-function delSubCat(p,i){cats[catMgrType][p].splice(i,1);save();renderSubCatMgr();}
+function addSubCat(){const p=document.getElementById('sub-cat-parent').value;const v=document.getElementById('new-sub-cat').value.trim();if(!v||!p)return;if(!cats[catMgrType][p])cats[catMgrType][p]=[];if(cats[catMgrType][p].includes(v)){toast('이미 있어요.');return;}cats[catMgrType][p].push(v);save();renderSubCatMgr();document.getElementById('new-sub-cat').value='';toast('추가됐어요.');if(accessToken&&sheetId)syncNow();}
+function delSubCat(p,i){cats[catMgrType][p].splice(i,1);save();renderSubCatMgr();if(accessToken&&sheetId)syncNow();}
 
 // ── ADD TX ──
 async function addTx(){
@@ -956,8 +985,8 @@ function renderYear(){
 // ── GOAL ──
 function populateGoalCats(){const el=document.getElementById('goal-cat-opts');el.innerHTML='';Object.keys(cats.expense).forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=k;el.appendChild(o);});}
 function setGoalPeriod(p){goalPeriod=p;document.getElementById('gpt-month').classList.toggle('active',p==='month');document.getElementById('gpt-year').classList.toggle('active',p==='year');}
-function setGoal(){const cat=document.getElementById('goal-cat').value;const amount=parseFloat(document.getElementById('goal-amount').value);if(!amount||amount<=0){toast('목표 금액을 입력해주세요.');return;}const gk=goalPeriod==='month'?`m:${cMonth.y}-${cMonth.m+1}`:`y:${cYear}`;if(!goals[gk])goals[gk]={};goals[gk][cat]=amount;save();renderGoal();document.getElementById('goal-amount').value='';toast('목표가 저장됐어요!');}
-function delGoal(gk,cat){if(!confirm('삭제할까요?'))return;if(goals[gk])delete goals[gk][cat];save();renderGoal();}
+function setGoal(){const cat=document.getElementById('goal-cat').value;const amount=parseFloat(document.getElementById('goal-amount').value);if(!amount||amount<=0){toast('목표 금액을 입력해주세요.');return;}const gk=goalPeriod==='month'?`m:${cMonth.y}-${cMonth.m+1}`:`y:${cYear}`;if(!goals[gk])goals[gk]={};goals[gk][cat]=amount;save();renderGoal();document.getElementById('goal-amount').value='';toast('목표가 저장됐어요!');if(accessToken&&sheetId)syncNow();}
+function delGoal(gk,cat){if(!confirm('삭제할까요?'))return;if(goals[gk])delete goals[gk][cat];save();renderGoal();if(accessToken&&sheetId)syncNow();}
 function goalListHTML(gk,txs){
   const g=goals[gk]||{};const entries=Object.entries(g);
   if(!entries.length)return '<div class="empty-msg">설정된 목표가 없어요.</div>';
