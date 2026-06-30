@@ -7,6 +7,11 @@
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="apple-touch-icon" href="favicon.svg">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#3182F6">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="가계부">
 
 <!-- ★ 여기에 본인 클라이언트 ID 입력 ★ -->
 <meta name="google-signin-client_id" content="132149880423-nmn6p3uaumj9srv6nkjrhnp793gkv43n.apps.googleusercontent.com">
@@ -139,9 +144,10 @@ select:focus,input:focus{outline:none;border-color:var(--blue);background:var(--
 .cat-add-input:focus{outline:none;border-color:var(--blue)}
 .cat-add-btn{padding:8px 14px;background:var(--blue);color:#fff;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);white-space:nowrap}
 .bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:var(--white);border-top:1px solid var(--gray-1);display:flex;z-index:100;padding-bottom:env(safe-area-inset-bottom,0px)}
-.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 0 8px;cursor:pointer;gap:4px;border:none;background:none;font-family:var(--font)}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;padding:9px 0 7px;cursor:pointer;gap:3px;border:none;background:none;font-family:var(--font);min-width:0}
 .nav-icon{display:flex;align-items:center;justify-content:center;color:var(--gray-4);transition:color .15s}
-.nav-label{font-size:10px;font-weight:700;color:var(--gray-4);letter-spacing:.2px;transition:color .15s}
+.nav-icon svg{width:19px;height:19px}
+.nav-label{font-size:9px;font-weight:700;color:var(--gray-4);letter-spacing:0;transition:color .15s}
 .nav-item.active .nav-icon{color:var(--blue)}
 .nav-item.active .nav-label{color:var(--blue)}
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:flex-end;justify-content:center}
@@ -321,62 +327,96 @@ select:focus,input:focus{outline:none;border-color:var(--blue);background:var(--
 </div>
 
 <!-- ── GOAL VIEW ── -->
-<div class="view" id="view-goal">
+
+<!-- ── CALENDAR VIEW ── -->
+<div class="view" id="view-calendar">
   <div class="sticky-top">
     <div class="view-header">
-      <div class="hd-eyebrow">목표 관리</div>
+      <div class="hd-eyebrow">함께 보는 캘린더</div>
       <div class="hd-row">
-        <div class="hd-title" id="goal-hd-title"></div>
+        <div class="hd-title" id="cal-hd-title"></div>
         <div class="arrow-group">
-          <button class="arrow-btn" onclick="changeGoalMonth(-1)">‹</button>
-          <button class="arrow-btn" onclick="changeGoalMonth(1)">›</button>
+          <button class="arrow-btn" onclick="changeCalMonth(-1)">‹</button>
+          <button class="arrow-btn" onclick="changeCalMonth(1)">›</button>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- 보기 필터 -->
+  <div id="cal-view-toggle" style="display:none;margin:16px 16px 0;background:var(--gray-1);border-radius:var(--radius);padding:3px;display:flex;gap:2px">
+    <button id="calv-me" onclick="setCalViewFilter('me')" style="flex:1;padding:9px;border-radius:var(--radius-sm);border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);background:var(--white);color:var(--blue);box-shadow:0 1px 4px rgba(0,0,0,.1)"><span id="calv-me-label">나</span></button>
+    <button id="calv-other" onclick="setCalViewFilter('other')" style="flex:1;padding:9px;border-radius:var(--radius-sm);border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);background:transparent;color:var(--gray-5)"><span id="calv-other-label">상대방</span></button>
+    <button id="calv-both" onclick="setCalViewFilter('both')" style="flex:1;padding:9px;border-radius:var(--radius-sm);border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font);background:transparent;color:var(--gray-5)">합산</button>
+  </div>
+
+  <!-- 월 합계 카드 -->
   <div class="section" style="margin-top:16px">
-    <div class="section-head"><div class="section-title">목표 추가</div></div>
-    <div class="card card-pad">
-      <div class="goal-period-toggle">
-        <button class="gpt-btn active" id="gpt-month" onclick="setGoalPeriod('month')">이번 달</button>
-        <button class="gpt-btn" id="gpt-year" onclick="setGoalPeriod('year')">올해</button>
-      </div>
-      <div class="form-stack">
-        <div class="row-2">
-          <div class="field"><label class="field-label">목표 항목</label><select id="goal-cat">
-            <option value="_income">총수입 목표</option>
-            <option value="_expense">총지출 한도</option>
-            <option value="_save">저축 목표</option>
-            <optgroup label="── 지출항목 ──" id="goal-cat-opts"></optgroup>
-          </select></div>
-          <div class="field"><label class="field-label">목표 금액</label>
-            <div class="amount-wrap"><input id="goal-amount" type="number" placeholder="0" inputmode="numeric"><span class="amount-suffix">원</span></div>
-          </div>
-        </div>
-        <button class="btn-primary" onclick="setGoal()">목표 저장</button>
+    <div class="balance-hero" style="margin:0">
+      <div class="bh-label" id="cal-month-summary-label">이번 달 합계</div>
+      <div class="bh-amount" id="cal-month-bal">0원</div>
+      <div class="bh-row">
+        <div class="bh-item"><div class="bh-item-label">수입</div><div class="bh-item-val i" id="cal-month-inc">0원</div></div>
+        <div class="bh-item"><div class="bh-item-label">지출</div><div class="bh-item-val e" id="cal-month-exp">0원</div></div>
       </div>
     </div>
   </div>
+
   <div class="section">
-    <div class="section-head"><div class="section-title" id="goal-list-title">이번 달 목표</div></div>
-    <div class="card" id="goal-list"></div>
+    <div class="card card-pad">
+      <div id="cal-legend" style="display:flex;gap:14px;margin-bottom:12px"></div>
+      <div id="cal-grid-header" style="display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:6px"></div>
+      <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px"></div>
+    </div>
   </div>
+
+  <!-- 선택일 합계 -->
   <div class="section">
-    <div class="section-head"><div class="section-title" id="goal-year-list-title">올해 목표</div></div>
-    <div class="card" id="goal-year-list"></div>
+    <div class="card" style="padding:14px 18px;display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="width:6px;height:6px;border-radius:50%;background:var(--blue)"></span>
+        <span style="font-size:12px;color:var(--gray-5);font-weight:600">수입</span>
+        <span style="font-size:14px;font-weight:700;color:var(--blue)" id="cal-day-inc">0원</span>
+      </div>
+      <div style="width:1px;height:16px;background:var(--gray-2)"></div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="width:6px;height:6px;border-radius:50%;background:var(--red)"></span>
+        <span style="font-size:12px;color:var(--gray-5);font-weight:600">지출</span>
+        <span style="font-size:14px;font-weight:700;color:var(--red)" id="cal-day-exp">0원</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title" id="cal-selected-date">오늘</div>
+      <button class="section-action" onclick="openEventModal()">+ 일정 추가</button>
+    </div>
+    <div class="card" id="cal-event-list"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-head"><div class="section-title">이 날 지출 내역</div></div>
+    <div class="card" id="cal-tx-list"></div>
   </div>
 </div>
-
 
 <!-- ── ASSET VIEW ── -->
 <div class="view" id="view-asset">
   <div class="sticky-top">
     <div class="view-header">
-      <div class="hd-eyebrow">자산 현황</div>
+      <div class="hd-eyebrow">자산 · 목표</div>
       <div class="hd-title">내 <span>자산</span></div>
     </div>
   </div>
 
+  <!-- 서브탭: 자산 / 목표 -->
+  <div style="margin:16px 16px 0;background:var(--gray-1);border-radius:var(--radius);padding:3px;display:flex;gap:2px">
+    <button id="asub-asset" onclick="setAssetSubTab('asset')" style="flex:1;padding:9px;border-radius:var(--radius-sm);border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:var(--font);background:var(--white);color:var(--blue);box-shadow:0 1px 4px rgba(0,0,0,.1)">자산 현황</button>
+    <button id="asub-goal" onclick="setAssetSubTab('goal')" style="flex:1;padding:9px;border-radius:var(--radius-sm);border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:var(--font);background:transparent;color:var(--gray-5)">목표 관리</button>
+  </div>
+
+  <div id="asset-subview-asset">
   <!-- 순자산 카드 -->
   <div class="balance-hero" style="background:linear-gradient(135deg,#1DC078,#0d9e62)">
     <div class="bh-label">순자산 (총자산 − 부채)</div>
@@ -465,6 +505,48 @@ select:focus,input:focus{outline:none;border-color:var(--blue);background:var(--
     </div>
     <div class="card" id="loan-list"></div>
   </div>
+  </div>
+
+  <div id="asset-subview-goal" style="display:none">
+<div class="section" style="margin-top:16px">
+    <div class="section-head">
+      <div class="section-title" id="goal-hd-title">목표 관리</div>
+      <div class="arrow-group">
+        <button class="arrow-btn" onclick="changeGoalMonth(-1)">‹</button>
+        <button class="arrow-btn" onclick="changeGoalMonth(1)">›</button>
+      </div>
+    </div>
+    <div class="section-head" style="margin-top:6px"><div class="section-title">목표 추가</div></div>
+    <div class="card card-pad">
+      <div class="goal-period-toggle">
+        <button class="gpt-btn active" id="gpt-month" onclick="setGoalPeriod('month')">이번 달</button>
+        <button class="gpt-btn" id="gpt-year" onclick="setGoalPeriod('year')">올해</button>
+      </div>
+      <div class="form-stack">
+        <div class="row-2">
+          <div class="field"><label class="field-label">목표 항목</label><select id="goal-cat">
+            <option value="_income">총수입 목표</option>
+            <option value="_expense">총지출 한도</option>
+            <option value="_save">저축 목표</option>
+            <optgroup label="── 지출항목 ──" id="goal-cat-opts"></optgroup>
+          </select></div>
+          <div class="field"><label class="field-label">목표 금액</label>
+            <div class="amount-wrap"><input id="goal-amount" type="number" placeholder="0" inputmode="numeric"><span class="amount-suffix">원</span></div>
+          </div>
+        </div>
+        <button class="btn-primary" onclick="setGoal()">목표 저장</button>
+      </div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-head"><div class="section-title" id="goal-list-title">이번 달 목표</div></div>
+    <div class="card" id="goal-list"></div>
+  </div>
+  <div class="section">
+    <div class="section-head"><div class="section-title" id="goal-year-list-title">올해 목표</div></div>
+    <div class="card" id="goal-year-list"></div>
+  </div>
+  </div>
 </div>
 
 <!-- ── SETTINGS VIEW ── -->
@@ -545,6 +627,14 @@ select:focus,input:focus{outline:none;border-color:var(--blue);background:var(--
       </div>
     </div>
   </div>
+  <!-- 반복 지출/수입 -->
+  <div class="section">
+    <div class="section-head">
+      <div class="section-title">반복 지출·수입</div>
+      <button class="section-action" onclick="openRecurringModal()">+ 추가</button>
+    </div>
+    <div class="card" id="recurring-list"></div>
+  </div>
   <div class="section">
     <div class="section-head"><div class="section-title">데이터</div></div>
     <div class="card">
@@ -557,6 +647,9 @@ select:focus,input:focus{outline:none;border-color:var(--blue);background:var(--
 
 <!-- BOTTOM NAV -->
 <nav class="bottom-nav">
+  <button class="nav-item" id="nav-calendar" onclick="showView('calendar',this)">
+    <span class="nav-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><circle cx="8" cy="15" r="1.5" fill="currentColor" stroke="none"/><circle cx="16" cy="15" r="1.5" fill="currentColor" stroke="none"/></svg></span><span class="nav-label">캘린더</span>
+  </button>
   <button class="nav-item active" id="nav-day" onclick="showView('day',this)">
     <span class="nav-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span><span class="nav-label">오늘</span>
   </button>
@@ -566,11 +659,8 @@ select:focus,input:focus{outline:none;border-color:var(--blue);background:var(--
   <button class="nav-item" id="nav-year" onclick="showView('year',this)">
     <span class="nav-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></span><span class="nav-label">연간</span>
   </button>
-  <button class="nav-item" id="nav-goal" onclick="showView('goal',this)">
-    <span class="nav-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span><span class="nav-label">목표</span>
-  </button>
   <button class="nav-item" id="nav-asset" onclick="showView('asset',this)">
-    <span class="nav-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span><span class="nav-label">자산</span>
+    <span class="nav-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h13a1 1 0 0 1 1 1v2"/><path d="M3 7v11a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1H5a2 2 0 0 1-2-2z"/><circle cx="17" cy="14" r="1.4" fill="currentColor" stroke="none"/></svg></span><span class="nav-label">자산</span>
   </button>
   <button class="nav-item" id="nav-settings" onclick="showView('settings',this)">
     <span class="nav-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span><span class="nav-label">설정</span>
@@ -785,7 +875,74 @@ select:focus,input:focus{outline:none;border-color:var(--blue);background:var(--
   </div>
 </div>
 
+
+<!-- EVENT MODAL -->
+<div class="modal-overlay" id="event-modal">
+  <div class="modal-sheet">
+    <div class="modal-handle-wrap"><div class="modal-handle"></div></div>
+    <div class="modal-title-row"><div class="modal-title" id="event-modal-title">일정 추가</div><button class="modal-close" onclick="closeModal('event-modal')">×</button></div>
+    <div class="modal-body">
+      <div class="form-stack">
+        <div class="field"><label class="field-label">날짜</label><input id="event-date" type="date"></div>
+        <div class="field"><label class="field-label">제목</label><input id="event-title" type="text" placeholder="예: 기념일, 병원 예약"></div>
+        <div class="field"><label class="field-label">시간 (선택)</label><input id="event-time" type="time"></div>
+        <div class="field"><label class="field-label">메모 (선택)</label><input id="event-memo" type="text" placeholder="추가 메모"></div>
+        <div style="display:flex;align-items:center;gap:6px;padding:10px 12px;background:var(--blue-light);border-radius:var(--radius-sm)">
+          <span style="width:8px;height:8px;border-radius:50%;background:#3182F6"></span>
+          <span style="font-size:12px;color:var(--blue-dark);font-weight:600">내 일정은 파란색으로 표시돼요</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <div class="modal-btns">
+        <button class="mbtn-cancel" onclick="closeModal('event-modal')">취소</button>
+        <button class="mbtn-ok" onclick="saveEvent()">저장</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
+
+
+<!-- RECURRING MODAL -->
+<div class="modal-overlay" id="recurring-modal">
+  <div class="modal-sheet">
+    <div class="modal-handle-wrap"><div class="modal-handle"></div></div>
+    <div class="modal-title-row"><div class="modal-title">반복 항목 추가</div><button class="modal-close" onclick="closeModal('recurring-modal')">×</button></div>
+    <div class="modal-body">
+      <div class="form-stack">
+        <div class="type-toggle">
+          <button class="tt-btn i active" id="rec-tt-i" onclick="setRecurringType('income')">+ 수입</button>
+          <button class="tt-btn e" id="rec-tt-e" onclick="setRecurringType('expense')">− 지출</button>
+        </div>
+        <div class="row-2">
+          <div class="field"><label class="field-label">대항목</label><select id="rec-cat-main" onchange="updateRecSubCat()"></select></div>
+          <div class="field"><label class="field-label">소항목</label><select id="rec-cat-sub"></select></div>
+        </div>
+        <div class="row-2">
+          <div class="field"><label class="field-label">메모</label><input id="rec-memo" type="text" placeholder="예: 월세, 넷플릭스"></div>
+          <div class="field"><label class="field-label">금액</label>
+            <div class="amount-wrap"><input id="rec-amount" type="number" placeholder="0" inputmode="numeric"><span class="amount-suffix">원</span></div>
+          </div>
+        </div>
+        <div class="row-2">
+          <div class="field"><label class="field-label">결제수단</label><select id="rec-method"></select></div>
+          <div class="field"><label class="field-label">매월 며칠</label>
+            <input id="rec-day" type="number" min="1" max="28" placeholder="1" value="1">
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <div class="modal-btns">
+        <button class="mbtn-cancel" onclick="closeModal('recurring-modal')">취소</button>
+        <button class="mbtn-ok" onclick="saveRecurring()">저장</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 <!-- Google Identity Services -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -1875,6 +2032,7 @@ async function loadFromSheets(){
   save();
   await loadAssetsFromSheet();
   await loadLoansFromSheet();
+  await loadEventsFromSheet();
   // UI 전체 갱신
   populateAllPayments();
   populateCats(document.getElementById('cat-main'),document.getElementById('cat-sub'),cType);
@@ -1942,6 +2100,142 @@ function renderSubCatMgr(){const p=document.getElementById('sub-cat-parent').val
 function addSubCat(){const p=document.getElementById('sub-cat-parent').value;const v=document.getElementById('new-sub-cat').value.trim();if(!v||!p)return;if(!cats[catMgrType][p])cats[catMgrType][p]=[];if(cats[catMgrType][p].includes(v)){toast('이미 있어요.');return;}cats[catMgrType][p].push(v);save();renderSubCatMgr();document.getElementById('new-sub-cat').value='';toast('추가됐어요.');if(accessToken&&sheetId)syncNow();}
 function delSubCat(p,i){cats[catMgrType][p].splice(i,1);save();renderSubCatMgr();if(accessToken&&sheetId)syncNow();}
 
+
+// ════════════════════════════════════════════════════
+// ── RECURRING ──
+// ════════════════════════════════════════════════════
+let recurring = JSON.parse(localStorage.getItem('kb_recurring') || '[]');
+let recType = 'income';
+
+function saveRecurring_storage(){ localStorage.setItem('kb_recurring', JSON.stringify(recurring)); }
+
+function setRecurringType(t){
+  recType = t;
+  document.getElementById('rec-tt-i').classList.toggle('active', t==='income');
+  document.getElementById('rec-tt-e').classList.toggle('active', t==='expense');
+  populateCats(document.getElementById('rec-cat-main'), document.getElementById('rec-cat-sub'), t);
+}
+function updateRecSubCat(){ updateSub(document.getElementById('rec-cat-main'), document.getElementById('rec-cat-sub'), recType); }
+
+function openRecurringModal(){
+  setRecurringType('income');
+  populatePayments(document.getElementById('rec-method'));
+  document.getElementById('rec-memo').value='';
+  document.getElementById('rec-amount').value='';
+  document.getElementById('rec-day').value='1';
+  document.getElementById('recurring-modal').classList.add('open');
+}
+
+function saveRecurringItem(){
+  const day = parseInt(document.getElementById('rec-day').value)||1;
+  const amount = parseFloat(document.getElementById('rec-amount').value);
+  if(!amount||amount<=0){ toast('금액을 입력해주세요.'); return; }
+  recurring.push({
+    id: Date.now(),
+    type: recType,
+    catMain: document.getElementById('rec-cat-main').value,
+    catSub: document.getElementById('rec-cat-sub').value,
+    memo: document.getElementById('rec-memo').value.trim(),
+    amount,
+    method: document.getElementById('rec-method').value,
+    day: Math.min(28, Math.max(1, day)),
+    lastApplied: null // 마지막으로 자동입력된 'YYYY-MM'
+  });
+  saveRecurring_storage();
+  closeModal('recurring-modal');
+  renderRecurringList();
+  toast('반복 항목이 추가됐어요!');
+}
+// alias for modal save button
+function saveRecurring(){ saveRecurringItem(); }
+
+function delRecurring(id){
+  if(!confirm('삭제할까요?')) return;
+  recurring = recurring.filter(r=>r.id!==id);
+  saveRecurring_storage();
+  renderRecurringList();
+}
+
+function renderRecurringList(){
+  const el = document.getElementById('recurring-list');
+  if(!el) return;
+  if(!recurring.length){ el.innerHTML='<div class="empty-msg">등록된 반복 항목이 없어요.</div>'; return; }
+  el.innerHTML = recurring.map(r=>`
+    <div class="tx-item">
+      ${catBadge(r.catMain,40)}
+      <div class="tx-body">
+        <div class="tx-main">${[r.catMain,r.catSub].filter(Boolean).join(' · ')}${r.memo?' · '+r.memo:''}</div>
+        <div class="tx-sub">매월 ${r.day}일 · ${r.method}</div>
+      </div>
+      <div class="tx-right">
+        <div class="tx-amt ${r.type==='income'?'i':'e'}">${r.type==='income'?'+':'−'}${fmtN(r.amount)}</div>
+        <div class="tx-btns"><button class="tx-btn del" onclick="delRecurring(${r.id})">삭제</button></div>
+      </div>
+    </div>`).join('');
+}
+
+// 앱 시작 시 / 날짜가 지나면 자동으로 반복 항목 입력
+function applyRecurringIfDue(){
+  const today = new Date();
+  const todayStr = dateKey(today);
+  const curMonth = `${today.getFullYear()}-${pad(today.getMonth()+1)}`;
+  let applied = 0;
+
+  recurring.forEach(r=>{
+    if(r.lastApplied === curMonth) return; // 이번 달에 이미 적용함
+    if(today.getDate() < r.day) return;    // 아직 그 날짜가 안 됨
+
+    // 해당 월의 그 날짜에 입력
+    const targetDate = new Date(today.getFullYear(), today.getMonth(), r.day);
+    const dk = dateKey(targetDate);
+    if(!data[dk]) data[dk]=[];
+    data[dk].push({
+      id: Date.now()+Math.floor(Math.random()*1000),
+      type: r.type, catMain: r.catMain, catSub: r.catSub,
+      memo: (r.memo||'')+' (자동)', amount: r.amount, method: r.method
+    });
+    r.lastApplied = curMonth;
+    applied++;
+  });
+
+  if(applied>0){
+    save();
+    saveRecurring_storage();
+    renderDay();
+    toast(`반복 항목 ${applied}건이 자동으로 입력됐어요!`, 3000);
+  }
+}
+
+// ── 예산 초과 알림 ──
+function checkBudgetAlert(tx){
+  if(tx.type!=='expense') return;
+  const now = new Date();
+  const mk = `m:${now.getFullYear()}-${now.getMonth()+1}`;
+  const monthGoals = goals[mk] || {};
+  const monthTxs = getMonthTxs(now.getFullYear(), now.getMonth());
+
+  // 카테고리별 한도 체크
+  const catGoal = monthGoals[tx.catMain];
+  if(catGoal){
+    const spent = monthTxs.filter(t=>t.type==='expense'&&t.catMain===tx.catMain).reduce((s,t)=>s+t.amount,0);
+    if(spent > catGoal){
+      setTimeout(()=>toast(`'${tx.catMain}' 목표 초과! ${fmtN(spent-catGoal)}원 더 썼어요`, 3500), 1200);
+      return;
+    } else if(spent > catGoal*0.9){
+      setTimeout(()=>toast(`'${tx.catMain}' 목표의 ${Math.round(spent/catGoal*100)}% 사용 중`, 2500), 1200);
+      return;
+    }
+  }
+  // 총지출 한도 체크
+  const totalGoal = monthGoals._expense;
+  if(totalGoal){
+    const totalSpent = monthTxs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    if(totalSpent > totalGoal){
+      setTimeout(()=>toast(`이번 달 총지출 한도 초과! ${fmtN(totalSpent-totalGoal)}원 초과`, 3500), 1200);
+    }
+  }
+}
+
 // ── ADD TX ──
 async function addTx(){
   const amount=parseFloat(document.getElementById('tx-amount').value);
@@ -1953,6 +2247,7 @@ async function addTx(){
   save();
   document.getElementById('tx-amount').value='';document.getElementById('tx-memo').value='';
   renderDay();
+  checkBudgetAlert(tx);
   // 시트에 자동 append
   if(accessToken && sheetId){
     toast('저장 중...', 3000);
@@ -2217,6 +2512,7 @@ function changeGoalMonth(d){cMonth.m+=d;if(cMonth.m>11){cMonth.m=0;cMonth.y++;}i
 function renderSettings(){
   if(sheetId && document.getElementById('sheet-id-input')) document.getElementById('sheet-id-input').value=sheetId;
   renderPaymentList();renderMainCatMgr();renderSubCatParent();renderSubCatMgr();
+  renderRecurringList();
   if(sheetId) document.getElementById('sheet-id-input').value=sheetId;
 }
 
@@ -2225,12 +2521,342 @@ function exportData(){const blob=new Blob([JSON.stringify({data,goals,cats,payme
 function importData(e){const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(d.data)data=d.data;if(d.goals)goals=d.goals;if(d.cats)cats=d.cats;if(d.payments)payments=d.payments;save();toast('불러왔어요!');location.reload();}catch{toast('파일을 읽을 수 없어요.');}};r.readAsText(file);}
 function resetData(){if(!confirm('모든 데이터가 삭제돼요. 계속할까요?'))return;data={};goals={};cats=JSON.parse(JSON.stringify(DEFAULT_CATS));payments=[...DEFAULT_PAYMENTS];save();location.reload();}
 
+// ════════════════════════════════════════════════════
+// ── CALENDAR (events shared with partner) ──
+// ════════════════════════════════════════════════════
+let events = JSON.parse(localStorage.getItem('kb_events') || '[]');
+let otherEvents = []; // 상대방 일정 캐시
+let cCalMonth = { y: new Date().getFullYear(), m: new Date().getMonth() };
+let selectedCalDate = dateKey(new Date());
+let editEventId = null;
+let calViewFilter = 'both'; // 'me' | 'other' | 'both'
+
+function saveEvents(){ localStorage.setItem('kb_events', JSON.stringify(events)); }
+
+function changeCalMonth(d){
+  cCalMonth.m += d;
+  if(cCalMonth.m>11){ cCalMonth.m=0; cCalMonth.y++; }
+  if(cCalMonth.m<0){ cCalMonth.m=11; cCalMonth.y--; }
+  renderCalendar();
+}
+
+const MY_EVENT_COLOR = '#3182F6';    // 내 일정 색 (파랑, 고정)
+const OTHER_EVENT_COLOR = '#F04452'; // 상대방 일정 색 (빨강, 고정)
+
+function setCalViewFilter(f){
+  calViewFilter = f;
+  ['me','other','both'].forEach(k=>{
+    const btn = document.getElementById('calv-'+k);
+    if(!btn) return;
+    const active = k===f;
+    btn.style.background = active ? 'var(--white)' : 'transparent';
+    btn.style.color = active ? 'var(--blue)' : 'var(--gray-5)';
+    btn.style.boxShadow = active ? '0 1px 4px rgba(0,0,0,.1)' : 'none';
+  });
+  renderCalendar();
+}
+
+function allEvents(){
+  // 내 일정 + 상대방 일정 합쳐서 반환 (사용자별 고정 색상 적용)
+  const mine = events.map(e=>({...e, color: MY_EVENT_COLOR, _owner: myName||'나', _mine:true}));
+  const others = otherEvents.map(e=>({...e, color: OTHER_EVENT_COLOR, _owner: otherEmail?otherEmail.split('@')[0]:'상대방', _mine:false}));
+  return [...mine, ...others];
+}
+
+// 필터에 맞는 일정만
+function filteredEvents(){
+  const all = allEvents();
+  if(calViewFilter==='me') return all.filter(e=>e._mine);
+  if(calViewFilter==='other') return all.filter(e=>!e._mine);
+  return all;
+}
+
+// 특정 날짜의 거래 내역 (필터 적용, 출처 라벨 포함)
+function txsForDate(dk){
+  const myTxs = (data[dk]||[]).map(t=>({...t, _owner: myName||'나', _ownerColor: MY_EVENT_COLOR, _mine:true}));
+  const otherTxs = (otherData[dk]||[]).map(t=>({...t, _owner: otherEmail?otherEmail.split('@')[0]:'상대방', _ownerColor: OTHER_EVENT_COLOR, _mine:false}));
+  if(calViewFilter==='me') return myTxs;
+  if(calViewFilter==='other') return otherTxs;
+  return [...myTxs, ...otherTxs];
+}
+
+// 특정 월의 거래 내역 (필터 적용)
+function txsForMonth(y,m){
+  const monthStr = `${y}-${pad(m+1)}`;
+  let myTxs = [], otherTxs = [];
+  Object.entries(data).forEach(([k,v])=>{ if(k.startsWith(monthStr)) myTxs.push(...v); });
+  Object.entries(otherData).forEach(([k,v])=>{ if(k.startsWith(monthStr)) otherTxs.push(...v); });
+  if(calViewFilter==='me') return myTxs;
+  if(calViewFilter==='other') return otherTxs;
+  return [...myTxs, ...otherTxs];
+}
+
+function renderCalendar(){
+  const { y, m } = cCalMonth;
+  document.getElementById('cal-hd-title').innerHTML = `${y}년 <span>${m+1}월</span>`;
+
+  // 보기 필터 토글 표시 여부 (상대방 등록된 경우만)
+  const toggleEl = document.getElementById('cal-view-toggle');
+  if(otherEmail){
+    toggleEl.style.display = 'flex';
+    document.getElementById('calv-me-label').textContent = myName||'나';
+    document.getElementById('calv-other-label').textContent = otherEmail.split('@')[0];
+  } else {
+    toggleEl.style.display = 'none';
+    calViewFilter = 'me'; // 상대방 없으면 항상 내 것만
+  }
+
+  // 요일 헤더
+  const days = ['일','월','화','수','목','금','토'];
+  document.getElementById('cal-grid-header').innerHTML = days.map(d=>
+    `<div style="text-align:center;font-size:11px;font-weight:700;color:var(--gray-4);padding:4px 0">${d}</div>`
+  ).join('');
+
+  // 범례
+  const myLabel = myName || '나';
+  const otherLabel = otherEmail ? otherEmail.split('@')[0] : null;
+  document.getElementById('cal-legend').innerHTML = `
+    <span style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--gray-6)"><span style="width:8px;height:8px;border-radius:50%;background:${MY_EVENT_COLOR}"></span>${myLabel}</span>
+    ${otherLabel?`<span style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--gray-6)"><span style="width:8px;height:8px;border-radius:50%;background:${OTHER_EVENT_COLOR}"></span>${otherLabel}</span>`:''}
+  `;
+
+  // 월 합계
+  const monthTxs = txsForMonth(y,m);
+  const mInc = monthTxs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const mExp = monthTxs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const filterLabel = calViewFilter==='me'?(myLabel+' '):calViewFilter==='other'?(otherLabel+' '):'';
+  document.getElementById('cal-month-summary-label').textContent = `${filterLabel}이번 달 합계`;
+  document.getElementById('cal-month-bal').textContent = fmt(mInc-mExp);
+  document.getElementById('cal-month-inc').textContent = fmt(mInc);
+  document.getElementById('cal-month-exp').textContent = fmt(mExp);
+
+  const firstDay = new Date(y, m, 1).getDay();
+  const lastDate = new Date(y, m+1, 0).getDate();
+  const today = dateKey(new Date());
+  const evs = filteredEvents();
+
+  let cells = [];
+  for(let i=0;i<firstDay;i++) cells.push(null);
+  for(let d=1; d<=lastDate; d++) cells.push(d);
+
+  document.getElementById('cal-grid').innerHTML = cells.map(d=>{
+    if(!d) return '<div></div>';
+    const dk = `${y}-${pad(m+1)}-${pad(d)}`;
+    const isToday = dk===today;
+    const isSelected = dk===selectedCalDate;
+    const dayEvents = evs.filter(e=>e.date===dk);
+    const dayTxs = txsForDate(dk);
+    const hasTx = dayTxs.some(t=>t.type==='expense');
+    const dots = dayEvents.slice(0,3).map(e=>`<span style="width:5px;height:5px;border-radius:50%;background:${e.color||'#3182F6'};display:inline-block;margin:0 1px"></span>`).join('');
+
+    return `<div onclick="selectCalDate('${dk}')" style="aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:10px;cursor:pointer;background:${isSelected?'var(--blue)':isToday?'var(--blue-light)':'transparent'};gap:2px">
+      <span style="font-size:13px;font-weight:${isToday||isSelected?'700':'500'};color:${isSelected?'#fff':isToday?'var(--blue)':'var(--gray-9)'}">${d}</span>
+      <span style="height:6px;display:flex;align-items:center">${dots}</span>
+      ${hasTx?`<span style="width:3px;height:3px;border-radius:50%;background:${isSelected?'#fff':'var(--red)'};position:relative;top:-2px"></span>`:''}
+    </div>`;
+  }).join('');
+
+  renderCalDayDetail();
+}
+
+function selectCalDate(dk){
+  selectedCalDate = dk;
+  renderCalendar();
+}
+
+function getMonthTxsRaw(y,m){
+  const res=[];
+  Object.entries(data).forEach(([k,v])=>{
+    const [ky,km]=k.split('-').map(Number);
+    if(ky===y&&km===m+1) res.push(...v);
+  });
+  return res;
+}
+
+function renderCalDayDetail(){
+  const [y,m,d] = selectedCalDate.split('-').map(Number);
+  const days = ['일','월','화','수','목','금','토'];
+  const dateObj = new Date(y, m-1, d);
+  document.getElementById('cal-selected-date').textContent = `${m}월 ${d}일 (${days[dateObj.getDay()]})`;
+
+  // 선택일 합계
+  const dayTxs = txsForDate(selectedCalDate);
+  const dInc = dayTxs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const dExp = dayTxs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  document.getElementById('cal-day-inc').textContent = fmt(dInc);
+  document.getElementById('cal-day-exp').textContent = fmt(dExp);
+
+  // 일정 목록 (필터 적용)
+  const evs = filteredEvents().filter(e=>e.date===selectedCalDate).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+  const evEl = document.getElementById('cal-event-list');
+  evEl.innerHTML = evs.length ? evs.map(e=>`
+    <div class="tx-item">
+      <div style="width:6px;height:40px;border-radius:3px;background:${e.color};flex-shrink:0"></div>
+      <div class="tx-body">
+        <div class="tx-main">${e.title}</div>
+        <div class="tx-sub" style="display:flex;align-items:center;gap:5px">
+          <span>${e.time?e.time+' · ':''}${e.memo?e.memo+' · ':''}</span>
+          <span style="display:inline-flex;align-items:center;gap:3px;background:${e.color}1a;color:${e.color};padding:1px 7px;border-radius:8px;font-size:10px;font-weight:700">
+            <span style="width:5px;height:5px;border-radius:50%;background:${e.color}"></span>${e._owner}
+          </span>
+        </div>
+      </div>
+      ${e._mine?`<div class="tx-right"><div class="tx-btns"><button class="tx-btn" onclick="openEventModal(${e.id})">수정</button><button class="tx-btn del" onclick="delEvent(${e.id})">삭제</button></div></div>`:''}
+    </div>`).join('') : '<div class="empty-msg">등록된 일정이 없어요.</div>';
+
+  // 지출 내역 (필터 적용)
+  const txEl = document.getElementById('cal-tx-list');
+  if(!dayTxs.length){
+    txEl.innerHTML = '<div class="empty-msg">이 날 지출 내역이 없어요.</div>';
+  } else {
+    txEl.innerHTML = dayTxs.map(t=>{
+      const sign = t.type==='income'?'+':'−';
+      const label = [t.catMain,t.catSub].filter(Boolean).join(' · ')+(t.memo?' · '+t.memo:'');
+      return `<div class="tx-item">
+        ${catBadge(t.catMain,40)}
+        <div class="tx-body">
+          <div class="tx-main">${label}</div>
+          <div class="tx-sub" style="display:flex;align-items:center;gap:5px">
+            <span>${t.method}</span>
+            <span style="display:inline-flex;align-items:center;gap:3px;background:${t._ownerColor}1a;color:${t._ownerColor};padding:1px 7px;border-radius:8px;font-size:10px;font-weight:700">
+              <span style="width:5px;height:5px;border-radius:50%;background:${t._ownerColor}"></span>${t._owner}
+            </span>
+          </div>
+        </div>
+        <div class="tx-right">
+          <div class="tx-amt ${t.type==='income'?'i':'e'}">${sign}${fmtN(t.amount)}</div>
+          ${t._mine?`<div class="tx-btns"><button class="tx-btn" onclick="openEdit('${selectedCalDate}',${t.id})">수정</button><button class="tx-btn del" onclick="delTx('${selectedCalDate}',${t.id})">삭제</button></div>`:''}
+        </div>
+      </div>`;
+    }).join('');
+  }
+}
+
+function openEventModal(id=null){
+  editEventId = id;
+  document.getElementById('event-modal-title').textContent = id ? '일정 수정' : '일정 추가';
+  if(id){
+    const e = events.find(e=>e.id===id);
+    if(!e) return;
+    document.getElementById('event-date').value = e.date;
+    document.getElementById('event-title').value = e.title;
+    document.getElementById('event-time').value = e.time||'';
+    document.getElementById('event-memo').value = e.memo||'';
+  } else {
+    document.getElementById('event-date').value = selectedCalDate;
+    document.getElementById('event-title').value = '';
+    document.getElementById('event-time').value = '';
+    document.getElementById('event-memo').value = '';
+  }
+  document.getElementById('event-modal').classList.add('open');
+}
+
+function saveEvent(){
+  const date = document.getElementById('event-date').value;
+  const title = document.getElementById('event-title').value.trim();
+  if(!date||!title){ toast('날짜와 제목을 입력해주세요.'); return; }
+  const ev = {
+    id: editEventId || Date.now(),
+    date, title,
+    time: document.getElementById('event-time').value,
+    color: MY_EVENT_COLOR,
+    memo: document.getElementById('event-memo').value.trim(),
+  };
+  if(editEventId){
+    const idx = events.findIndex(e=>e.id===editEventId);
+    if(idx>-1) events[idx]=ev;
+  } else {
+    events.push(ev);
+  }
+  saveEvents();
+  closeModal('event-modal');
+  renderCalendar();
+  toast('일정이 저장됐어요!');
+  if(accessToken&&sheetId) syncEvents();
+}
+
+function delEvent(id){
+  if(!confirm('일정을 삭제할까요?')) return;
+  events = events.filter(e=>e.id!==id);
+  saveEvents();
+  renderCalendar();
+  toast('삭제됐어요.');
+  if(accessToken&&sheetId) syncEvents();
+}
+
+// ── 일정 시트 동기화 ──
+const EVENT_SHEET = () => sheetNameFor(myEmail, '일정');
+
+async function syncEvents(){
+  if(!accessToken||!sheetId) return;
+  const meta = await sheetsRequest('GET', `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?fields=sheets.properties.title`);
+  if(!meta) return;
+  const existing = meta.sheets?.map(s=>s.properties.title)||[];
+  if(!existing.includes(EVENT_SHEET())){
+    await sheetsRequest('POST', `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}:batchUpdate`,
+      { requests:[{ addSheet:{ properties:{ title:EVENT_SHEET() } } }] });
+  }
+  const rows = [['ID','날짜','제목','시간','색상','메모'], ...events.map(e=>[e.id,e.date,e.title,e.time||'',e.color||'',e.memo||''])];
+  await sheetsRequest('POST', `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(EVENT_SHEET())}:clear`, {});
+  await sheetsRequest('PUT', `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(EVENT_SHEET()+'!A1:F'+rows.length)}?valueInputOption=RAW`, {majorDimension:'ROWS', values:rows});
+}
+
+async function loadEventsFromSheet(){
+  if(!accessToken||!sheetId) return;
+  const res = await sheetsRequest('GET', `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(EVENT_SHEET())}`);
+  if(!res||!res.values||res.values.length<2) return;
+  events = res.values.slice(1).map(r=>({ id:parseInt(r[0])||Date.now(), date:r[1], title:r[2], time:r[3]||'', color:r[4]||'#3182F6', memo:r[5]||'' }));
+  saveEvents();
+}
+
+async function loadOtherEvents(){
+  if(!accessToken||!sheetId||!otherEmail) return;
+  const meta = await sheetsRequest('GET', `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?fields=sheets.properties.title`);
+  if(!meta) return;
+  const tabs = meta.sheets?.map(s=>s.properties.title)||[];
+  const tabName = sheetNameFor(otherEmail,'일정');
+  const actual = tabs.includes(tabName) ? tabName : tabs.find(t=>t.endsWith('_일정')&&t!==EVENT_SHEET());
+  if(!actual){ otherEvents=[]; return; }
+  const res = await sheetsRequest('GET', `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(actual)}`);
+  if(!res||!res.values||res.values.length<2){ otherEvents=[]; return; }
+  otherEvents = res.values.slice(1).map(r=>({ id:parseInt(r[0])||0, date:r[1], title:r[2], time:r[3]||'', color:r[4]||'#3182F6', memo:r[5]||'' }));
+}
+
+// ── ASSET SUBTAB (자산/목표 통합) ──
+let assetSubTab = 'asset';
+function setAssetSubTab(t){
+  assetSubTab = t;
+  document.getElementById('asset-subview-asset').style.display = t==='asset' ? 'block' : 'none';
+  document.getElementById('asset-subview-goal').style.display = t==='goal' ? 'block' : 'none';
+  const aBtn = document.getElementById('asub-asset');
+  const gBtn = document.getElementById('asub-goal');
+  aBtn.style.background = t==='asset' ? 'var(--white)' : 'transparent';
+  aBtn.style.color = t==='asset' ? 'var(--blue)' : 'var(--gray-5)';
+  aBtn.style.boxShadow = t==='asset' ? '0 1px 4px rgba(0,0,0,.1)' : 'none';
+  gBtn.style.background = t==='goal' ? 'var(--white)' : 'transparent';
+  gBtn.style.color = t==='goal' ? 'var(--blue)' : 'var(--gray-5)';
+  gBtn.style.boxShadow = t==='goal' ? '0 1px 4px rgba(0,0,0,.1)' : 'none';
+  if(t==='asset') renderAsset();
+  if(t==='goal') renderGoal();
+}
+
 // ── NAV ──
 function showView(v,btn){
   document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');btn.classList.add('active');
-  if(v==='month')renderMonth();if(v==='year')renderYear();if(v==='goal')renderGoal();if(v==='settings')renderSettings();
+  if(v==='month')renderMonth();if(v==='year')renderYear();if(v==='settings')renderSettings();
+  if(v==='asset'){
+    renderAsset();
+    renderGoal();
+  }
+  if(v==='calendar'){
+    renderCalendar();
+    if(accessToken&&sheetId&&otherEmail){
+      loadOtherEvents().then(renderCalendar);
+      if(Object.keys(otherData).length===0) loadOtherData().then(renderCalendar);
+    }
+  }
   window.scrollTo(0,0);
 }
 
@@ -2239,6 +2865,7 @@ populatePayments(document.getElementById('tx-method'));
 populateCats(document.getElementById('cat-main'),document.getElementById('cat-sub'),'income');
 populateGoalCats();
 renderDay();
+applyRecurringIfDue();
 </script>
 </body>
 </html>
