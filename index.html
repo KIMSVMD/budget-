@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="favicon.svg">
 
 <!-- ★ 여기에 본인 클라이언트 ID 입력 ★ -->
-<meta name="132149880423-nmn6p3uaumj9srv6nkjrhnp793gkv43n.apps.googleusercontent.com">
+<meta name="google-signin-client_id" content="132149880423-nmn6p3uaumj9srv6nkjrhnp793gkv43n.apps.googleusercontent.com">
 
 <style>
 :root{
@@ -1883,20 +1883,34 @@ async function loadFromSheets(){
   toast('모두 불러왔어요! 내역·목표·카테고리·결제수단·자산 동기화 완료');
 }
 
-// 목표 시트 존재 확인 (syncNow 내부로 통합됨, 호환성 유지용)
-async function ensureGoalSheet(){}
-
-// 시트 존재 확인 후 없으면 생성 (호환성 유지용)
-async function ensureSheet(){}
+// 시트 존재 확인 후 없으면 생성
+async function ensureSheet(){
+  if(!accessToken||!sheetId) return false;
+  const meta=await sheetsRequest('GET',`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?fields=sheets.properties.title`);
+  if(!meta){ toast('시트 접근 실패. ID를 확인해주세요.'); return false; }
+  const existing=meta.sheets?.map(s=>s.properties.title)||[];
+  const sheetName = MY_SHEET();
+  if(!existing.includes(sheetName)){
+    const res = await sheetsRequest('POST',`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}:batchUpdate`,
+      {requests:[{addSheet:{properties:{title:sheetName}}}]});
+    if(res){
+      // 헤더 추가
+      await sheetsRequest('PUT',`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(sheetName+'!A1:H1')}?valueInputOption=RAW`,
+        {majorDimension:'ROWS', values:[['날짜','유형','대항목','소항목','메모','금액','결제수단','ID']]});
+    }
+  }
+  return true;
+}
 
 // 내역 추가 시 시트에도 자동 append
 async function appendToSheet(tx, dk){
-  if(!accessToken||!sheetId) return;
+  if(!accessToken||!sheetId) return false;
   const row=[[dk, tx.type==='income'?'수입':'지출', tx.catMain, tx.catSub||'', tx.memo||'', tx.amount, tx.method||'', tx.id]];
-  await sheetsRequest('POST',
+  const res = await sheetsRequest('POST',
     `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(MY_SHEET()+'!A:H')}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
     {majorDimension:'ROWS', values:row}
   );
+  return !!res;
 }
 
 // ════════════════════════════════════════════════════
@@ -1938,12 +1952,19 @@ async function addTx(){
   data[key].push(tx);
   save();
   document.getElementById('tx-amount').value='';document.getElementById('tx-memo').value='';
-  toast('추가됐어요!');
   renderDay();
   // 시트에 자동 append
   if(accessToken && sheetId){
-    await ensureSheet();
-    await appendToSheet(tx, key);
+    toast('저장 중...', 3000);
+    const ok = await ensureSheet();
+    if(ok){
+      const appended = await appendToSheet(tx, key);
+      toast(appended ? '추가되고 시트에 저장됐어요!' : '추가됐지만 시트 저장에 실패했어요.');
+    } else {
+      toast('추가됐지만 시트 연결에 문제가 있어요.');
+    }
+  } else {
+    toast('추가됐어요! (로그인하면 시트에도 저장돼요)');
   }
 }
 
