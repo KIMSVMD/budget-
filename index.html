@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="favicon.svg">
 
 <!-- ★ 여기에 본인 클라이언트 ID 입력 ★ -->
-<meta name="132149880423-nmn6p3uaumj9srv6nkjrhnp793gkv43n.apps.googleusercontent.com">
+<meta name="google-signin-client_id" content="132149880423-nmn6p3uaumj9srv6nkjrhnp793gkv43n.apps.googleusercontent.com">
 
 <style>
 :root{
@@ -799,8 +799,9 @@ const CLIENT_ID = '132149880423-nmn6p3uaumj9srv6nkjrhnp793gkv43n.apps.googleuser
 
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
 function sheetNameFor(email, suffix='내역'){
-  // 이메일 앞부분만 사용 (@ 앞)
-  const id = email ? email.split('@')[0].replace(/[^a-zA-Z0-9가-힣]/g,'_') : 'user';
+  if(!email) return 'user_'+suffix;
+  // @ 앞부분만 추출, 영문/숫자/한글만 남기고 나머지는 _ 로
+  const id = email.split('@')[0].replace(/[^a-zA-Z0-9가-힣]/g,'_');
   return id+'_'+suffix;
 }
 // 내 시트 이름 (동적)
@@ -1788,15 +1789,16 @@ async function loadFromSheets(){
   if(!meta){ toast('시트 접근 실패. ID를 확인해주세요.'); return; }
   const existingTabs = meta.sheets?.map(s=>s.properties.title)||[];
 
-  // 내 탭 이름 후보 (새 형식, 구 형식 둘 다 시도)
+  // 내 탭 이름 후보 (새 형식, 구 형식, 부분 매칭)
   const mySheetName = MY_SHEET(); // 예: jingyeongv1_내역
   const legacyName  = '가계부내역';
-  const actualSheet = existingTabs.includes(mySheetName) ? mySheetName
-                    : existingTabs.includes(legacyName)  ? legacyName
+  const actualSheet = existingTabs.includes(mySheetName)  ? mySheetName
+                    : existingTabs.includes(legacyName)   ? legacyName
+                    : existingTabs.find(t=>t.endsWith('_내역')) // 이메일 앞부분 무관하게 _내역으로 끝나는 탭
                     : null;
 
   if(!actualSheet){
-    toast(`시트를 찾을 수 없어요. 탭 목록: ${existingTabs.join(', ')}`);
+    toast(`못 찾음: ${mySheetName} / 탭: ${existingTabs.join(', ')}`);
     return;
   }
 
@@ -1814,9 +1816,11 @@ async function loadFromSheets(){
   });
   data=newData;
 
-  // ── 목표 불러오기 (새 탭 or 구 탭) ──
-  const goalTabName = existingTabs.includes(MY_GOAL_SHEET()) ? MY_GOAL_SHEET()
-                    : existingTabs.includes('가계부목표')    ? '가계부목표' : null;
+  // ── 목표 불러오기 (새 탭 or 구 탭 or 부분매칭) ──
+  const goalTabName = existingTabs.includes(MY_GOAL_SHEET())  ? MY_GOAL_SHEET()
+                    : existingTabs.includes('가계부목표')      ? '가계부목표'
+                    : existingTabs.find(t=>t.endsWith('_목표'))
+                    || null;
   if(goalTabName){
     const gRes=await sheetsRequest('GET',`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(goalTabName)}`);
     if(gRes&&gRes.values&&gRes.values.length>1){
@@ -1830,9 +1834,11 @@ async function loadFromSheets(){
     }
   }
 
-  // ── 설정 불러오기 (새 탭 or 구 탭) ──
-  const settingsTabName = existingTabs.includes(MY_SETTINGS_SHEET()) ? MY_SETTINGS_SHEET()
-                        : existingTabs.includes('가계부설정')          ? '가계부설정' : null;
+  // ── 설정 불러오기 (새 탭 or 구 탭 or 부분매칭) ──
+  const settingsTabName = existingTabs.includes(MY_SETTINGS_SHEET())  ? MY_SETTINGS_SHEET()
+                        : existingTabs.includes('가계부설정')           ? '가계부설정'
+                        : existingTabs.find(t=>t.endsWith('_설정'))
+                        || null;
   if(settingsTabName){
     const sRes=await sheetsRequest('GET',`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(settingsTabName)}`);
     if(sRes&&sRes.values&&sRes.values.length>1){
