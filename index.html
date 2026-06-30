@@ -260,6 +260,13 @@ select:focus,input:focus{outline:none;border-color:var(--blue);background:var(--
   </div>
   <div class="scroll-x" style="margin-top:16px;padding-bottom:6px" id="month-stats-row"></div>
   <div class="divider" style="margin-top:10px"></div>
+
+  <!-- 목표 달성률 -->
+  <div class="section" style="margin-top:16px;display:none" id="month-goal-section">
+    <div class="section-head"><div class="section-title">목표 달성률</div></div>
+    <div class="card" id="month-goal-progress"></div>
+  </div>
+
   <div class="section" style="margin-top:16px">
     <div class="section-head">
       <div class="section-title">지출 항목별</div>
@@ -310,6 +317,13 @@ select:focus,input:focus{outline:none;border-color:var(--blue);background:var(--
     <div class="card"><div class="chart-wrap"><div class="bar-chart" id="year-chart"></div></div></div>
   </div>
   <div class="scroll-x" id="year-stats-row" style="padding-bottom:6px;margin-top:10px"></div>
+
+  <!-- 목표 달성률 -->
+  <div class="section" style="margin-top:16px;display:none" id="year-goal-section">
+    <div class="section-head"><div class="section-title">올해 목표 달성률</div></div>
+    <div class="card" id="year-goal-progress"></div>
+  </div>
+
   <div class="section" style="margin-top:10px">
     <div class="section-head"><div class="section-title">월별 상세</div></div>
     <div class="card"><table class="y-table"><thead><tr><th>월</th><th>수입</th><th>지출</th><th>잔액</th></tr></thead><tbody id="year-table"></tbody></table></div>
@@ -2385,6 +2399,12 @@ function renderMonth(){
   const txs=getMonthTxs(y,m);const inc=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);const exp=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
   document.getElementById('month-bal').textContent=fmt(inc-exp);document.getElementById('month-inc').textContent=fmt(inc);document.getElementById('month-exp').textContent=fmt(exp);
   document.getElementById('month-stats-row').innerHTML=statCardsHTML(txs);
+  // 목표 달성률
+  const mgk=`m:${y}-${m+1}`;
+  const mGoalHTML=goalListHTML(mgk,txs,true);
+  const mGoalSection=document.getElementById('month-goal-section');
+  if(mGoalHTML){ mGoalSection.style.display='block'; document.getElementById('month-goal-progress').innerHTML=mGoalHTML; }
+  else { mGoalSection.style.display='none'; }
   renderMonthCat();
   const byDate={};txs.forEach(t=>{if(!byDate[t._key])byDate[t._key]=[];byDate[t._key].push(t);});
   const dks=Object.keys(byDate).sort((a,b)=>b.localeCompare(a));
@@ -2404,6 +2424,12 @@ function renderYear(){
   document.getElementById('year-chart').innerHTML=mData.map((d,i)=>`<div class="bar-col"><div class="bar-pair"><div class="bar i" style="height:${Math.max(3,d.inc/maxV*110)}px"></div><div class="bar e" style="height:${Math.max(3,d.exp/maxV*110)}px"></div></div><div class="bar-lbl">${i+1}월</div></div>`).join('');
   const allTxs=getYearTxs(cYear);
   document.getElementById('year-stats-row').innerHTML=statCardsHTML(allTxs);
+  // 목표 달성률
+  const ygk=`y:${cYear}`;
+  const yGoalHTML=goalListHTML(ygk,allTxs,true);
+  const yGoalSection=document.getElementById('year-goal-section');
+  if(yGoalHTML){ yGoalSection.style.display='block'; document.getElementById('year-goal-progress').innerHTML=yGoalHTML; }
+  else { yGoalSection.style.display='none'; }
   document.getElementById('year-table').innerHTML=mData.map((d,i)=>`<tr><td>${i+1}월</td><td class="i">${d.inc?fmtN(d.inc):'-'}</td><td class="e">${d.exp?fmtN(d.exp):'-'}</td><td class="b" style="color:${d.bal>=0?'var(--blue)':'var(--red)'}">${fmtN(d.bal)}</td></tr>`).join('');
   renderYearCat();
 }
@@ -2486,16 +2512,17 @@ function populateGoalCats(){const el=document.getElementById('goal-cat-opts');el
 function setGoalPeriod(p){goalPeriod=p;document.getElementById('gpt-month').classList.toggle('active',p==='month');document.getElementById('gpt-year').classList.toggle('active',p==='year');}
 function setGoal(){const cat=document.getElementById('goal-cat').value;const amount=parseFloat(document.getElementById('goal-amount').value);if(!amount||amount<=0){toast('목표 금액을 입력해주세요.');return;}const gk=goalPeriod==='month'?`m:${cMonth.y}-${cMonth.m+1}`:`y:${cYear}`;if(!goals[gk])goals[gk]={};goals[gk][cat]=amount;save();renderGoal();document.getElementById('goal-amount').value='';toast('목표가 저장됐어요!');if(accessToken&&sheetId)syncNow();}
 function delGoal(gk,cat){if(!confirm('삭제할까요?'))return;if(goals[gk])delete goals[gk][cat];save();renderGoal();if(accessToken&&sheetId)syncNow();}
-function goalListHTML(gk,txs){
+function goalListHTML(gk,txs,readonly=false){
   const g=goals[gk]||{};const entries=Object.entries(g);
-  if(!entries.length)return '<div class="empty-msg">설정된 목표가 없어요.</div>';
+  if(!entries.length)return readonly?'':'<div class="empty-msg">설정된 목표가 없어요.</div>';
   const inc=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);const exp=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
   const catMap={};txs.filter(t=>t.type==='expense').forEach(t=>catMap[t.catMain]=(catMap[t.catMain]||0)+t.amount);
   const LABELS={_income:'총수입 목표',_expense:'총지출 한도',_save:'저축 목표'};
   return entries.map(([cat,target])=>{
     const actual=cat==='_income'?inc:cat==='_expense'?exp:cat==='_save'?Math.max(0,inc-exp):catMap[cat]||0;
     const pct=Math.min(actual/target*100,100);const over=actual>target;
-    return `<div class="goal-row"><div class="goal-header"><span class="goal-name">${LABELS[cat]||cat}</span><button class="goal-del" onclick="delGoal('${gk}','${cat}')">×</button></div><div class="goal-nums">${fmtN(actual)}원 / 목표 ${fmtN(target)}원</div><div class="goal-bar-bg"><div class="goal-bar-fill${over?' over':''}" style="width:${pct.toFixed(1)}%"></div></div><div class="goal-footer"><span class="goal-pct${over?' over':''}">${Math.round(actual/target*100)}%</span><span class="goal-status">${over?'한도 초과':'달성 중'}</span></div></div>`;
+    const delBtn = readonly?'':`<button class="goal-del" onclick="delGoal('${gk}','${cat}')">×</button>`;
+    return `<div class="goal-row"><div class="goal-header"><span class="goal-name">${LABELS[cat]||cat}</span>${delBtn}</div><div class="goal-nums">${fmtN(actual)}원 / 목표 ${fmtN(target)}원</div><div class="goal-bar-bg"><div class="goal-bar-fill${over?' over':''}" style="width:${pct.toFixed(1)}%"></div></div><div class="goal-footer"><span class="goal-pct${over?' over':''}">${Math.round(actual/target*100)}%</span><span class="goal-status">${over?'한도 초과':'달성 중'}</span></div></div>`;
   }).join('');
 }
 function renderGoal(){
